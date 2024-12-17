@@ -1,48 +1,107 @@
+import Datatrans
 import ExpoModulesCore
 
 public class ExpoDatatransModule: Module {
-  // Each module class must implement the definition function. The definition consists of components
-  // that describes the module's functionality and behavior.
-  // See https://docs.expo.dev/modules/module-api for more details about available components.
-  public func definition() -> ModuleDefinition {
-    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
-    // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
-    // The module will be accessible from `requireNativeModule('ExpoDatatrans')` in JavaScript.
-    Name("ExpoDatatrans")
+    private var currentPromise: Promise?
 
-    // Sets constant properties on the module. Can take a dictionary or a closure that returns a dictionary.
-    Constants([
-      "PI": Double.pi
-    ])
+    public func definition() -> ModuleDefinition {
+        Name("ExpoDatatrans")
 
-    // Defines event names that the module can send to JavaScript.
-    Events("onChange")
-
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
-    Function("hello") {
-      return "Hello world! 👋"
-    }
-
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
-    AsyncFunction("setValueAsync") { (value: String) in
-      // Send an event to JavaScript.
-      self.sendEvent("onChange", [
-        "value": value
-      ])
-    }
-
-    // Enables the module to be used as a native view. Definition components that are accepted as part of the
-    // view definition: Prop, Events.
-    View(ExpoDatatransView.self) {
-      // Defines a setter for the `url` prop.
-      Prop("url") { (view: ExpoDatatransView, url: URL) in
-        if view.webView.url != url {
-          view.webView.load(URLRequest(url: url))
+        AsyncFunction("transaction") { [weak self] (mobileToken: String, options: [String: Any]?, promise: Promise) in
+            self?.handleTransaction(mobileToken: mobileToken, options: options ?? [:], promise: promise)
         }
-      }
-
-      Events("onLoad")
     }
-  }
+
+    private func handleTransaction(mobileToken: String, options: [String: Any]?, promise: Promise) {
+        currentPromise = promise
+
+        DispatchQueue.main.async {
+            guard let presentingController = self.getPresentingController() else {
+                promise.reject("DATATRANS_ERROR", "ViewController doesn't exist")
+                return
+            }
+
+            let transaction = self.createTransaction(mobileToken: mobileToken, options: options)
+            transaction.delegate = self
+            transaction.start(presentingController: presentingController)
+        }
+    }
+
+    private func getPresentingController() -> UIViewController? {
+        guard let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
+              let window = scene.windows.first(where: { $0.isKeyWindow })
+        else {
+            return nil
+        }
+        return window.rootViewController
+    }
+
+    private func createTransaction(mobileToken: String, options: [String: Any]?) -> Transaction {
+        let savedCards = parseSavedCards(from: options)
+        let transaction = Transaction(mobileToken: mobileToken, savedPaymentMethods: savedCards)
+        let transactionOptions = TransactionOptions()
+        transactionOptions.appCallbackScheme = options?["appCallbackScheme"] as? String ?? "defaultScheme"
+        transactionOptions.testing = options?["isTesting"] as? Bool ?? false
+        transactionOptions.useCertificatePinning = options?["isUseCertificatePinning"] as? Bool ?? false
+        transaction.options = transactionOptions
+        return transaction
+    }
+
+    private func parseSavedCards(from options: [String: Any]?) -> [SavedCard] {
+        guard let options = options else { return [] }
+        let aliasPaymentMethods = options["aliasPaymentMethods"] as? [[String: Any]] ?? []
+
+        return aliasPaymentMethods.compactMap { (apm: [String: Any]) -> SavedCard? in
+            guard let paymentMethod = options["paymentMethod"] as? String,
+                  let paymentMethodType = PaymentMethodConverter(rawValue: paymentMethod)?.nativeType,
+                  let alias = apm["alias"] as? String,
+                  let ccNumber = apm["ccNumber"] as? String,
+                  let expiryMonth = apm["expiryMonth"] as? Int,
+                  let expiryYear = apm["expiryYear"] as? Int
+            else {
+                return nil
+            }
+
+            let expiryDate = CardExpiryDate(month: expiryMonth, year: expiryYear)
+            return SavedCard(type: paymentMethodType,
+                             alias: alias,
+                             cardExpiryDate: expiryDate,
+                             maskedCardNumber: ccNumber,
+                             cardholder: "")
+        }
+    }
+}
+
+extension ExpoDatatransModule: TransactionDelegate {
+    public func transactionDidCancel(_ transaction: Transaction) {
+        resolveTransaction(.init(status: .cancel,
+                                 data: [:]))
+    }
+
+    public func transactionDidFail(_ transaction: Transaction, error: TransactionError) {
+        resolveTransaction(.init(status: .error,
+                                 data: ["transactionId": error.transactionId ?? "",
+                                        "message": error.localizedDescription,
+                                        "paymentMethodType": convertFromNative(error.paymentMethodType)]))
+    }
+
+    public func transactionDidFinish(_ transaction: Transaction, result: TransactionSuccess) {
+        var data: [String: Any] = [
+            "transactionId": result.transactionId,
+            "paymentMethodType": convertFromNative(result.paymentMethodType)
+        ]
+
+        if let savedPaymentMethod = result.savedPaymentMethod {
+            data["savedPaymentMethod"] = [
+                "type": convertFromNative(savedPaymentMethod.type),
+                "alias": savedPaymentMethod.alias
+            ]
+        }
+
+        resolveTransaction(.init(status: .success, data: data))
+    }
+
+    private func resolveTransaction(_ response: TransactionResponse) {
+        currentPromise?.resolve(response.dictionary)
+    }
 }

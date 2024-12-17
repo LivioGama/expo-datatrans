@@ -1,12 +1,8 @@
-import { NativeModule, requireNativeModule } from 'expo';
+import {requireNativeModule} from 'expo-modules-core'
+import {Options, TransactionResult} from './ExpoDatatrans.types'
 
-import { ExpoDatatransModuleEvents } from './ExpoDatatrans.types';
-
-declare class ExpoDatatransModule extends NativeModule<ExpoDatatransModuleEvents> {
-  PI: number;
-  hello(): string;
-  setValueAsync(value: string): Promise<void>;
+interface ExpoDatatransModule {
+  transaction(mobileToken: string, options?: Options): Promise<TransactionResult>
 }
 
-// This call loads the native module object from the JSI.
-export default requireNativeModule<ExpoDatatransModule>('ExpoDatatrans');
+export default requireNativeModule<ExpoDatatransModule>('ExpoDatatrans')

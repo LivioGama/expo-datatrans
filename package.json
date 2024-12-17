@@ -1,9 +1,15 @@
 {
   "name": "expo-datatrans",
-  "version": "0.1.0",
+  "version": "0.1.4",
   "description": "Using datatrans native SDK for iOS and Android",
-  "main": "build/index.js",
-  "types": "build/index.d.ts",
+  "main": "src/index",
+  "types": "src/index",
+  "exports": {
+    ".": {
+      "import": "./src/index",
+      "types": "./src/index"
+    }
+  },
   "scripts": {
     "build": "expo-module build",
     "clean": "expo-module clean",
@@ -15,12 +21,7 @@
     "open:ios": "xed example/ios",
     "open:android": "open -a \"Android Studio\" example/android"
   },
-  "keywords": [
-    "react-native",
-    "expo",
-    "expo-datatrans",
-    "ExpoDatatrans"
-  ],
+  "keywords": ["react-native", "expo", "expo-datatrans", "ExpoDatatrans"],
   "repository": "https://github.com/LivioGama/expo-datatrans.git",
   "bugs": {
     "url": "https://github.com/LivioGama/expo-datatrans.git/issues"

@@ -41,3 +41,7 @@ android {
     abortOnError false
   }
 }
+
+dependencies {
+  implementation 'ch.datatrans:android-sdk:3.7.4'
+}
