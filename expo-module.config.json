@@ -1,0 +1,17 @@
+{
+  "platforms": [
+    "apple",
+    "android",
+    "web"
+  ],
+  "apple": {
+    "modules": [
+      "ExpoDatatransModule"
+    ]
+  },
+  "android": {
+    "modules": [
+      "expo.modules.datatrans.ExpoDatatransModule"
+    ]
+  }
+}
