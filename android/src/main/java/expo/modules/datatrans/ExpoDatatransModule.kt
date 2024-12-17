@@ -1,50 +1,123 @@
 package expo.modules.datatrans
 
+import androidx.lifecycle.LifecycleOwner
+import ch.datatrans.payment.api.*
+import ch.datatrans.payment.paymentmethods.*
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import java.net.URL
+import android.util.Log
 
 class ExpoDatatransModule : Module() {
-  // Each module class must implement the definition function. The definition consists of components
-  // that describes the module's functionality and behavior.
-  // See https://docs.expo.dev/modules/module-api for more details about available components.
-  override fun definition() = ModuleDefinition {
-    // Sets the name of the module that JavaScript code will use to refer to the module. Takes a string as an argument.
-    // Can be inferred from module's class name, but it's recommended to set it explicitly for clarity.
-    // The module will be accessible from `requireNativeModule('ExpoDatatrans')` in JavaScript.
-    Name("ExpoDatatrans")
+    private var currentPromise: Promise? = null
 
-    // Sets constant properties on the module. Can take a dictionary or a closure that returns a dictionary.
-    Constants(
-      "PI" to Math.PI
+    override fun definition() = ModuleDefinition {
+        Name("ExpoDatatrans")
+        AsyncFunction("transaction") { mobileToken: String, options: Map<String, Any>?, promise: Promise ->
+            handleTransaction(mobileToken, options ?: emptyMap(), promise)
+        }
+    }
+
+    private fun handleTransaction(mobileToken: String, options: Map<String, Any>, promise: Promise) {
+        currentPromise = promise
+
+        val activity = appContext.currentActivity ?: run {
+            promise.reject("DATATRANS_ERROR", "Activity doesn't exist", null)
+            return
+        }
+
+        try {
+            val transaction = createTransaction(mobileToken, options)
+
+            if (activity !is LifecycleOwner) {
+                throw IllegalStateException("Activity must implement LifecycleOwner")
+            }
+
+            activity.runOnUiThread {
+                transaction.listener = createTransactionListener()
+                TransactionRegistry.startTransaction(activity, transaction)
+            }
+        } catch (e: Exception) {
+            Log.e("error", e.message ?: "Unknown error", e)
+            promise.reject("DATATRANS_ERROR", e.message, e)
+        }
+    }
+
+    private fun createTransactionListener() = object : TransactionListener {
+        override fun onTransactionCancel(mobileToken: String) {
+            resolveTransaction(TransactionResponse("cancel"))
+        }
+
+        override fun onTransactionError(exception: ch.datatrans.payment.exception.TransactionException) {
+            resolveTransaction(TransactionResponse(
+                status = "error",
+                data = mapOf(
+                    "transactionId" to (exception.transactionId.orEmpty()),
+                    "message" to (exception.message ?: "Unknown error"),
+                    "paymentMethodType" to PaymentMethodConverter.fromNative(exception.paymentMethodType)
+                )
+            ))
+        }
+
+        override fun onTransactionSuccess(result: TransactionSuccess) {
+            val data = mutableMapOf<String, Any>(
+                "transactionId" to result.transactionId,
+                "paymentMethodType" to PaymentMethodConverter.fromNative(result.paymentMethodType)
+            )
+
+            result.savedPaymentMethod?.let { savedPaymentMethod ->
+                data["savedPaymentMethod"] = mapOf(
+                    "type" to PaymentMethodConverter.fromNative(savedPaymentMethod.type),
+                    "alias" to savedPaymentMethod.alias
+                )
+            }
+
+            resolveTransaction(TransactionResponse(
+                status = "success",
+                data = data
+            ))
+        }
+    }
+
+    private fun createTransaction(mobileToken: String, options: Map<String, Any>): Transaction =
+        parseSavedCards(options).let { savedCards ->
+            (if (savedCards.isNotEmpty()) Transaction(mobileToken, savedCards)
+             else Transaction(mobileToken))
+                .apply { this.options = createTransactionOptions(options) }
+        }
+
+    private fun createTransactionOptions(options: Map<String, Any>) = TransactionOptions().apply {
+        appCallbackScheme = options["appCallbackScheme"] as? String ?: "defaultScheme"
+        isTesting = options["isTesting"] as? Boolean ?: false
+        useCertificatePinning = options["isUseCertificatePinning"] as? Boolean ?: false
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun parseSavedCards(options: Map<String, Any>): List<SavedCard> =
+        (options["aliasPaymentMethods"] as? List<Map<String, Any>>)?.mapNotNull { apm ->
+            PaymentMethodConverter.fromString(apm["paymentMethod"] as String)?.toNativeType()?.let { paymentMethodType ->
+                SavedCard(
+                    paymentMethodType,
+                    apm["alias"] as String,
+                    CardExpiryDate(
+                        (apm["expiryMonth"] as Number).toInt(),
+                        (apm["expiryYear"] as Number).toInt()
+                    ),
+                    apm["ccNumber"] as String,
+                    ""
+                )
+            }
+        } ?: emptyList()
+
+    private fun resolveTransaction(response: TransactionResponse) {
+        currentPromise?.resolve(mapOf(
+            "status" to response.status,
+            "data" to response.data
+        ))
+    }
+
+    private data class TransactionResponse(
+        val status: String,
+        val data: Map<String, Any> = emptyMap()
     )
-
-    // Defines event names that the module can send to JavaScript.
-    Events("onChange")
-
-    // Defines a JavaScript synchronous function that runs the native code on the JavaScript thread.
-    Function("hello") {
-      "Hello world! 👋"
-    }
-
-    // Defines a JavaScript function that always returns a Promise and whose native code
-    // is by default dispatched on the different thread than the JavaScript runtime runs on.
-    AsyncFunction("setValueAsync") { value: String ->
-      // Send an event to JavaScript.
-      sendEvent("onChange", mapOf(
-        "value" to value
-      ))
-    }
-
-    // Enables the module to be used as a native view. Definition components that are accepted as part of
-    // the view definition: Prop, Events.
-    View(ExpoDatatransView::class) {
-      // Defines a setter for the `url` prop.
-      Prop("url") { view: ExpoDatatransView, url: URL ->
-        view.webView.loadUrl(url.toString())
-      }
-      // Defines an event that the view can send to JavaScript.
-      Events("onLoad")
-    }
-  }
 }
