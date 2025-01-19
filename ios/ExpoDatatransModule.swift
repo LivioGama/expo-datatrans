@@ -43,6 +43,15 @@ public class ExpoDatatransModule: Module {
         transactionOptions.appCallbackScheme = options?["appCallbackScheme"] as? String ?? "defaultScheme"
         transactionOptions.testing = options?["isTesting"] as? Bool ?? false
         transactionOptions.useCertificatePinning = options?["isUseCertificatePinning"] as? Bool ?? false
+
+        if let applePayConfig = options?["applePayConfig"] as? [String: Any],
+           let merchantId = applePayConfig["merchantId"] as? String,
+           let supportedNetworks = applePayConfig["supportedNetworks"] as? [String] {
+            transactionOptions.applePayConfig = ApplePayConfig(
+                applePayMerchantId: merchantId,
+                supportedNetworks: supportedNetworks.toApplePayNetworks()
+            )
+        }
         transaction.options = transactionOptions
         return transaction
     }

@@ -19,6 +19,18 @@ export default function Index() {
         isTesting: true,
         isUseCertificatePinning: false,
         appCallbackScheme: 'myapp',
+        googlePayConfig: {
+          merchantId: 'YOUR_GOOGLE_MERCHANT_ID',
+          supportedNetworks: [PaymentMethodType.MASTERCARD, PaymentMethodType.VISA],
+        },
+        samsungPayConfig: {
+          merchantId: 'YOUR_SAMSUNG_MERCHANT_ID',
+          supportedNetworks: [PaymentMethodType.MASTERCARD, PaymentMethodType.VISA],
+        },
+        applePayConfig: {
+          merchantId: 'YOUR_APPLE_MERCHANT_ID',
+          supportedNetworks: [PaymentMethodType.MASTERCARD, PaymentMethodType.VISA],
+        },
       }
 
       const result = await ExpoDatatrans.transaction('mobileToken123', options)

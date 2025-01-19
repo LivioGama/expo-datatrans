@@ -49,6 +49,18 @@ type Options = {
   isTesting?: boolean
   isUseCertificatePinning?: boolean
   appCallbackScheme?: string
+  googlePayConfig?: {
+    merchantId: string
+    supportedNetworks: PaymentMethodType[]
+  }
+  samsungPayConfig?: {
+    merchantId: string
+    supportedNetworks: PaymentMethodType[]
+  }
+  applePayConfig?: {
+    merchantId: string
+    supportedNetworks: PaymentMethodType[]
+  }
 }
 
 type TransactionResult = {
@@ -64,5 +76,5 @@ type TransactionResult = {
   }
 }
 
-export type {AliasPaymentMethod, Options, TransactionResult}
 export {PaymentMethodType}
+export type {AliasPaymentMethod, Options, TransactionResult}

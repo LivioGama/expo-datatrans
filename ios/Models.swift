@@ -134,3 +134,49 @@ func convertFromNative(_ paymentMethod: PaymentMethodType?) -> String {
     default: return "UNKNOWN"
     }
 }
+
+extension Array where Element == String {
+    func toApplePayNetworks() -> [PKPaymentNetwork] {
+        self.compactMap { paymentMethod -> PKPaymentNetwork? in
+            switch paymentMethod {
+            case "VISA":
+                return .visa
+            case "MASTERCARD":
+                return .masterCard
+            case "AMERICAN_EXPRESS":
+                return .amex
+            case "DISCOVER":
+                return .discover
+            case "JCB":
+                return .JCB
+            case "UNION_PAY":
+                if #available(iOS 9.2, *) {
+                    return .chinaUnionPay
+                }
+                return nil
+            case "MAESTRO":
+                if #available(iOS 12.0, *) {
+                    return .maestro
+                }
+                return nil
+            case "ELO":
+                if #available(iOS 12.1.1, *) {
+                    return .elo
+                }
+                return nil
+            case "DANKORT":
+                if #available(iOS 15.1, *) {
+                    return .dankort
+                }
+                return nil
+            case "POST_FINANCE_CARD":
+                if #available(iOS 16.4, *) {
+                    return .postFinance
+                }
+                return nil
+            default:
+                return nil
+            }
+        }
+    }
+}

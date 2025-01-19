@@ -90,6 +90,22 @@ class ExpoDatatransModule : Module() {
         appCallbackScheme = options["appCallbackScheme"] as? String ?: "defaultScheme"
         isTesting = options["isTesting"] as? Boolean ?: false
         useCertificatePinning = options["isUseCertificatePinning"] as? Boolean ?: false
+
+        (options["googlePayConfig"] as? Map<String, Any>)?.also { googlePayConfig ->
+            val merchantId = googlePayConfig["merchantId"] as String
+            val supportedNetworks = (googlePayConfig["supportedNetworks"] as List<String>).mapNotNull {
+                PaymentMethodConverter.fromString(it)?.toNativeType()
+            }
+            this.googlePayConfig = GooglePayConfig.Builder(supportedNetworks, merchantId).build()
+        }
+
+        (options["samsungPayConfig"] as? Map<String, Any>)?.also { samsungPayConfig ->
+            val merchantId = samsungPayConfig["merchantId"] as String
+            val supportedNetworks = (samsungPayConfig["supportedNetworks"] as List<String>).mapNotNull {
+                PaymentMethodConverter.fromString(it)?.toNativeType()
+            }
+            this.samsungPayConfig = SamsungPayConfig(supportedNetworks, merchantId)
+        }
     }
 
     @Suppress("UNCHECKED_CAST")

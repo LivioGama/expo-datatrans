@@ -17,20 +17,6 @@ Install the module using Expo CLI:
 bunx expo install expo-datatrans
 ```
 
-### Caveat
-
-To run the Android example, you need to run:
-
-```bash
-cd example
-node scripts/update-gradle.js
-```
-
-This is because we need a specific repository to add the Datatrans SDK to the project. 
-
-You will have to do the same on your own project, so I recommend copying the example project scripts to prebuild clean and ensure the repository is added to the `build.gradle` file after removing and regenerating the Android project.
-
-
 ## ✨ Features
 
 - Seamless integration with the Datatrans payment gateway
@@ -68,6 +54,18 @@ export default function Index() {
                 isTesting: true,
                 isUseCertificatePinning: false,
                 appCallbackScheme: 'myapp',
+                googlePayConfig: {
+                    merchantId: 'YOUR_GOOGLE_MERCHANT_ID',
+                    supportedNetworks: [PaymentMethodType.MASTERCARD, PaymentMethodType.VISA],
+                },
+                samsungPayConfig: {
+                    merchantId: 'YOUR_SAMSUNG_MERCHANT_ID',
+                    supportedNetworks: [PaymentMethodType.MASTERCARD, PaymentMethodType.VISA],
+                },
+                applePayConfig: {
+                    merchantId: 'YOUR_APPLE_MERCHANT_ID',
+                    supportedNetworks: [PaymentMethodType.MASTERCARD, PaymentMethodType.VISA],
+                },
             };
 
             const result: TransactionResult = await ExpoDatatrans.transaction('mobileToken123', options);
