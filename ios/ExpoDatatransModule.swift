@@ -101,10 +101,24 @@ extension ExpoDatatransModule: TransactionDelegate {
         ]
 
         if let savedPaymentMethod = result.savedPaymentMethod {
-            data["savedPaymentMethod"] = [
-                "type": convertFromNative(savedPaymentMethod.type),
-                "alias": savedPaymentMethod.alias
-            ]
+            let paymentMethod = convertFromNative(savedPaymentMethod.type)
+            
+            if paymentMethod == "POST_FINANCE_CARD" || paymentMethod == "VISA" || paymentMethod == "MASTERCARD" {
+                data.removeAll()
+                data["alias"] = savedPaymentMethod.alias
+                data["paymentMethod"] = paymentMethod
+                
+                if let savedCard = savedPaymentMethod as? SavedCard {
+                    if let maskedNumber = savedCard.maskedCardNumber {
+                        data["maskedCC"] = maskedNumber
+                    }
+                    
+                    if let cardExpiryDate = savedCard.cardExpiryDate {
+                        data["expMonth"] = String(format: "%02d", cardExpiryDate.month)
+                        data["expYear"] = String(format: "%04d", cardExpiryDate.year)
+                    }
+                }
+            }
         }
 
         resolveTransaction(.init(status: .success, data: data))

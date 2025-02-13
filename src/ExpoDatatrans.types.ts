@@ -67,11 +67,11 @@ type TransactionResult = {
   status: 'success' | 'error' | 'cancel'
   data: {
     transactionId?: string
-    savedPaymentMethod?: {
-      type: PaymentMethodType
-      alias: string
-    }
-    paymentMethodType?: PaymentMethodType
+    alias?: string
+    expMonth?: string
+    expYear?: string
+    maskedCC?: string
+    paymentMethod?: PaymentMethodType | 'PFC'
     message?: string
   }
 }

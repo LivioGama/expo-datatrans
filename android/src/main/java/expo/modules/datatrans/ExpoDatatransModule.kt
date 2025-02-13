@@ -66,10 +66,25 @@ class ExpoDatatransModule : Module() {
             )
 
             result.savedPaymentMethod?.let { savedPaymentMethod ->
-                data["savedPaymentMethod"] = mapOf(
-                    "type" to PaymentMethodConverter.fromNative(savedPaymentMethod.type),
-                    "alias" to savedPaymentMethod.alias
-                )
+                val paymentMethod = PaymentMethodConverter.fromNative(savedPaymentMethod.type)
+
+                if (paymentMethod == "POST_FINANCE_CARD" || paymentMethod == "VISA" || paymentMethod == "MASTERCARD") {
+                    data.clear()
+                    data.putAll(mapOf(
+                        "alias" to savedPaymentMethod.alias,
+                        "paymentMethod" to paymentMethod
+                    ))
+
+                    (savedPaymentMethod as? SavedCard)?.let { savedCard ->
+                        savedCard.maskedCardNumber?.let { maskedNumber ->
+                            data["maskedCC"] = maskedNumber
+                        }
+                        savedCard.cardExpiryDate?.let { expiryDate ->
+                            data["expMonth"] = String.format("%02d", expiryDate.month)
+                            data["expYear"] = String.format("%04d", expiryDate.year)
+                        }
+                    }
+                }
             }
 
             resolveTransaction(TransactionResponse(
