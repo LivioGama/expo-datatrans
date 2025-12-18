@@ -98,6 +98,39 @@ The following key types are included for ease of integration:
 - [PaymentMethodType]()
 - [TransactionResult](https://github.com/LivioGama/expo-datatrans/blob/main/src/ExpoDatatrans.types.ts)
 
+## 🔧 Troubleshooting
+
+### Android: "null cannot be cast to non-null type kotlin.collections.List"
+
+This error occurs when the `googlePayConfig` or `samsungPayConfig` is missing required fields.
+
+**❌ Incorrect usage (causes error):**
+```typescript
+const DATATRANS_SUPPORTED_NETWORK = [PaymentMethodType.VISA, PaymentMethodType.MASTERCARD];
+
+const options = {
+  googlePayConfig: {
+    merchantId: 'YOUR_MERCHANT_ID',
+    DATATRANS_SUPPORTED_NETWORK,  // ❌ Wrong: This creates a key named "DATATRANS_SUPPORTED_NETWORK"
+  }
+};
+```
+
+**✅ Correct usage:**
+```typescript
+const DATATRANS_SUPPORTED_NETWORK = [PaymentMethodType.VISA, PaymentMethodType.MASTERCARD];
+
+const options = {
+  googlePayConfig: {
+    merchantId: 'YOUR_MERCHANT_ID',
+    supportedNetworks: DATATRANS_SUPPORTED_NETWORK,  // ✅ Correct: Explicitly set the key name
+  }
+};
+```
+
+**Why it happens:**
+The JavaScript object shorthand syntax `{ DATATRANS_SUPPORTED_NETWORK }` creates a property with the key being the variable name, not `supportedNetworks`. The native Android module expects a key named `supportedNetworks` and will throw a clear error if it's missing.
+
 ## 📄 License
 
 This project is licensed under the MIT License.
