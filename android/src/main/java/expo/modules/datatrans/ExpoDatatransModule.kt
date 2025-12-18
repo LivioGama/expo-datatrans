@@ -107,18 +107,24 @@ class ExpoDatatransModule : Module() {
         useCertificatePinning = options["isUseCertificatePinning"] as? Boolean ?: false
 
         (options["googlePayConfig"] as? Map<String, Any>)?.also { googlePayConfig ->
-            val merchantId = googlePayConfig["merchantId"] as String
-            val supportedNetworks = (googlePayConfig["supportedNetworks"] as List<String>).mapNotNull {
-                PaymentMethodConverter.fromString(it)?.toNativeType()
-            }
+            val merchantId = googlePayConfig["merchantId"] as? String
+                ?: throw IllegalArgumentException("googlePayConfig.merchantId is required")
+            val supportedNetworksRaw = googlePayConfig["supportedNetworks"]
+                ?: throw IllegalArgumentException("googlePayConfig.supportedNetworks is required")
+            val supportedNetworks = (supportedNetworksRaw as? List<*>)?.mapNotNull {
+                PaymentMethodConverter.fromString(it as? String ?: "")?.toNativeType()
+            } ?: throw IllegalArgumentException("googlePayConfig.supportedNetworks must be a list of payment method types")
             this.googlePayConfig = GooglePayConfig.Builder(supportedNetworks, merchantId).build()
         }
 
         (options["samsungPayConfig"] as? Map<String, Any>)?.also { samsungPayConfig ->
-            val merchantId = samsungPayConfig["merchantId"] as String
-            val supportedNetworks = (samsungPayConfig["supportedNetworks"] as List<String>).mapNotNull {
-                PaymentMethodConverter.fromString(it)?.toNativeType()
-            }
+            val merchantId = samsungPayConfig["merchantId"] as? String
+                ?: throw IllegalArgumentException("samsungPayConfig.merchantId is required")
+            val supportedNetworksRaw = samsungPayConfig["supportedNetworks"]
+                ?: throw IllegalArgumentException("samsungPayConfig.supportedNetworks is required")
+            val supportedNetworks = (supportedNetworksRaw as? List<*>)?.mapNotNull {
+                PaymentMethodConverter.fromString(it as? String ?: "")?.toNativeType()
+            } ?: throw IllegalArgumentException("samsungPayConfig.supportedNetworks must be a list of payment method types")
             this.samsungPayConfig = SamsungPayConfig(supportedNetworks, merchantId)
         }
     }
